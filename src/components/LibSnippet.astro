@@ -1,0 +1,24 @@
+---
+import OpticsLogo from "@assets/optics-outline.svg";
+import JotaiLogo from "@assets/jotai-mascot.png";
+
+interface Props {
+  lib: "jotai" | "optics";
+}
+
+const { lib } = Astro.props;
+---
+
+<div
+  style={{ backgroundColor: lib === "jotai" ? "#d4d4d4" : "#00a6a6" }}
+  class="rounded-lg px-2 py-0"
+>
+  <img
+    src={lib === "optics" ? OpticsLogo : JotaiLogo}
+    alt="lib-logo"
+    width={25}
+    height={25}
+    class="m-0 -mb-5 ml-2 self-start border-0 pt-1"
+  />
+  <slot />
+</div>

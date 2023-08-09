@@ -1,0 +1,396 @@
+---
+pubDatetime: 2023-08-09
+title: Comparing Optics with Jotai
+featured: true
+draft: false
+tags:
+  - optics
+  - jotai
+  - atoms
+ogImage: ""
+description: Comparing Jotai with Optics, a new state management library that uses primitives seemingly similar to atoms.
+---
+
+import LibSnippet from "../../components/LibSnippet.astro";
+
+_Optics is a novel state management library for TypeScript that uses **functional references** to help you compose and decompose your application state, and decouple your components from it.  
+It puts an emphasis on ease-of-use and scalability.
+You can check it out here: https://optics.page_
+
+---
+
+The concept of optics isn't new and has been a mainstay of functional programming languages for many years. This library simply adapted the concept to application state management in TypeScript.
+
+So while it wasn't inspired by [Jotai](https://jotai.org/)'s atomic model, Optics ended up having interesting similarities to it despite their different origins.  
+Let's take a look at how these libraries leverage primitives that are superficially similar but have different underlying philosophies.
+
+<br />
+
+# The similarities
+
+Both libraries can be called **atomic** in the sense that you can create as many independent pieces of state as you want, that live outside of your component tree:
+
+- Jotai
+
+<LibSnippet lib="jotai">
+
+```ts
+const nameAtom = atom("aramis");
+```
+
+</LibSnippet>
+
+- Optics
+
+<LibSnippet lib="optics">
+
+```ts
+const onName = createState("aramis");
+```
+
+</LibSnippet>
+
+One returns an atom while the other returns an optic, but on the surface these two concepts are pretty similar.  
+They both allow you to read the state, update it, subscribe to it and use it in your components:
+
+- Jotai
+
+<LibSnippet lib="jotai">
+
+```ts
+const store = createStore();
+
+// Read
+store.get(nameAtom); // "aramis"
+
+// Update
+store.set(nameAtom, "athos");
+
+// Subscribe
+const unsub = store.sub(nameAtom, () => {
+  console.log(`name changed to ${store.get(nameAtom)}`);
+});
+
+// Usage in components
+const Component = () => {
+  const [name, setName] = useAtom(nameAtom);
+};
+```
+
+</LibSnippet>
+
+- Optics
+
+<LibSnippet lib="optics">
+
+```ts
+// Read
+onName.get(); // "aramis"
+
+// Update
+onName.set("athos");
+
+// Subscribe
+const unsub = onName.subscribe(newName => {
+  console.log(`name changed to ${newName}`);
+});
+
+// Usage in components
+const Component = () => {
+  const [name, setName] = useOptic(onName);
+};
+```
+
+</LibSnippet>
+
+But if you're already familiar with Jotai you know that its power lies in its ability to derive new atoms from the previous ones:
+
+<LibSnippet lib="jotai">
+
+```ts
+const upperCaseNameAtom = atom(
+  get => get(nameAtom).toUpperCase(),
+  (get, set, newName) => {
+    set(nameAtom, newName.toLowerCase());
+  }
+);
+
+store.get(upperCaseNameAtom); // "ATHOS"
+
+store.set(upperCaseNameAtom, "PORTHOS");
+
+store.get(nameAtom); // "porthos"
+```
+
+</LibSnippet>
+
+Well it turns out you can also derive optics in a similar fashion:
+
+<LibSnippet lib="optics">
+
+```ts
+const onUpperCaseName = onName.derive(
+  name => name.toUpperCase(),
+  newName => newName.toLowerCase()
+);
+
+onUpperCaseName.get(); // "ATHOS"
+
+onUpperCaseName.set("PORTHOS");
+
+onName.get(); // "porthos"
+```
+
+</LibSnippet>
+
+At its core an optic is just a pair of function (a get and a set) that composes. A ReadWriteAtom in Jotai seems pretty close to that description.
+
+The authors of [Recoil](https://recoiljs.org/) (the library that inspired Jotai) probably hadn't optics in mind when conceptualizing the atom which makes these similarities all the more interesting.
+
+They end here however, as both libraries have different visions when it comes to composability and the abstraction level of their APIs.
+
+<br />
+
+# The differences
+
+## Decomposition
+
+One of the main selling point of optics is the ability to derive a new optic from a property:
+
+<LibSnippet lib="optics">
+
+```ts
+const onUser = createState({
+  name: "Vincent",
+  contact: { phone: "(555) 555-1234" },
+});
+
+const onName = onUser.name;
+onName.get(); // "Vincent"
+```
+
+</LibSnippet>
+
+The `onName` optic is focused on the `name` property, and allows us to read, modify it or subscribe to its changes.  
+It looks like a plain reference in JavaScript, and just like them they are **chainable**:
+
+<LibSnippet lib="optics">
+
+```ts
+const onPhone = onUser.contact.phone;
+
+onPhone.get(); // "(555) 555-1234"
+```
+
+</LibSnippet>
+
+<br />
+
+Now doing the same with Jotai isn't that straight-forward, besides its `atom` function it doesn't offer much in the way of a high-level api:
+
+<LibSnippet lib="jotai">
+
+```ts
+const userAtom = atom({
+  name: "Vincent",
+  contact: { phone: "(555) 555-1234" },
+});
+
+const nameAtom = atom(
+  get => get(userAtom).name,
+  (get, set, newName) => set({ ...get(nameAtom), name: newName })
+);
+```
+
+</LibSnippet>
+
+To get to the phone property it's the same logic but with an additional level of nesting when updating the atom.  
+When dealing with deeply nested values in Jotai you'll want to use an additional library like [Immer](https://immerjs.github.io/immer/) to avoid the update logic getting out of hand.
+
+### Methods
+
+With optics, in addition to properties you can use various methods to derive new optics like `findFirst`, `refine` or `max`:
+
+<LibSnippet lib="optics">
+
+```ts
+const onCyclists = createState([
+  { name: "Froome", tourDeFrance: 4 },
+  { name: "Vingegaard", tourDeFrance: 2 },
+  { name: "Hindurain", tourDeFrance: 5 },
+]);
+
+const onMostTitled = onCyclists.max(cyclist => cyclist.tourDeFrance);
+
+onMostTitled.name.get(); // "Hindurain"
+```
+
+</LibSnippet>
+
+With Jotai you're left again implementing these kind of behaviors with the low-level `atom` function:
+
+<LibSnippet lib="jotai">
+
+```ts
+const cyclistsAtom = atom([
+  { name: "Froome", tourDeFrance: 4 },
+  { name: "Vingegaard", tourDeFrance: 2 },
+  { name: "Hindurain", tourDeFrance: 5 },
+]);
+
+const mostTitledAtom = atom(
+  get =>
+    get(cyclistsAtom).reduce((acc, cv) =>
+      cv.tourDeFrance > acc.tourDeFrance ? cv : acc
+    ),
+  (get, set, newValue) => {
+    const indexOfMax = get(cyclistsAtom).reduce(
+      (acc, cyclist, index, cyclists) =>
+        cyclist.tourDeFrance > cyclists[index].tourDeFrance ? index : acc,
+      0
+    );
+    const updatedCyclists = get(cyclistsAtom).map((cyclist, index) =>
+      index === indexOfMax ? newValue : cyclist
+    );
+    set(cyclistsAtom, updatedCyclists);
+  }
+);
+```
+
+</LibSnippet>
+
+While it stays straightforward with simple examples, it can get convoluted when multiple atoms are involved, particularly in the set function. You have to mentally parse the functions and find all the imperative connections to and from other atoms to get a grasp of the data-flow.
+
+And while Jotai allows you to manually implement every possible operation with atoms, what it is missing is a way to natively **chain** these atoms.
+
+Optics allows you to do that with its **fluent-api**, where in a single expression you can derive a new optic from properties, built-in methods or any custom derive logic you want:
+
+<LibSnippet lib="optics">
+
+```ts
+const newOptic = optic.propA.propB.builtInMethod().derive(customDerivation);
+```
+
+</LibSnippet>
+
+## Composition
+
+We saw how Jotai and Optics differ when it comes to the **decomposition** of their respective primitives, but they also diverge when comes the time to **compose them together**.
+
+With the Optics library you can [create relations](https://www.optics.page/docs/Introduction/core-concepts#compose) between your entities with optics. Simply reference an already existing optic when creating a new one and you're set:
+
+<LibSnippet lib="optics">
+
+```ts
+const onCyclingTeams = createState([
+  { name: "Sky", founded: 2009, bikes: "Pinarello" },
+  { name: "Israel Premier Tech", founded: 2015, bikes: "Factor" },
+]);
+
+const onFroome = createState({
+  name: "Froome",
+  age: 38,
+  team: onCyclingTeams[0],
+});
+
+onFroome.subscribe(console.log, { denormalize: true });
+
+// change the team's name
+onCyclingTeams[0].name.set("Ineos");
+// console output:
+// {
+//   name: "Froome",
+//   age: 38,
+//   team: { name: "Ineos", founded: 2009, bikes: "Pinarello" },
+// }
+
+// move Froome to another team
+onFroome.team.set(onCyclingTeams[1]);
+// console output:
+// {
+//   name: "Froome",
+//   age: 38,
+//   team: { name: "Israel Premier Tech", founded: 2015, bikes: "Factor" },
+// }
+```
+
+</LibSnippet>
+
+What it allows us to do is to represent our state as a **graph**, with relations between entities and a way to read the **denormalized result** anywhere in the graph.
+
+Doing the same with Jotai is a bit more involved, you can use the [atoms in atom](https://jotai.org/docs/guides/atoms-in-atom) pattern but you'll have to manually derive a ReadAtom to get the denormalized result:
+
+<LibSnippet lib="jotai">
+
+```ts
+const cyclingTeamsAtom = atom([
+  atom({ name: "Sky", founded: 2009, bikes: "Pinarello" }),
+  atom({ name: "Israel Premier Tech", founded: 2015, bikes: "Factor" }),
+]);
+
+const froomeAtom = atom({
+  name: "Froome",
+  age: 38,
+  team: store.get(cyclingTeamsAtom)[0],
+});
+
+const denormalizedAtom = atom(get => ({
+  ...get(froomeAtom),
+  team: get(get(froomeAtom).team),
+}));
+
+const store = createStore();
+
+store.sub(denormalizedAtom, () => {
+  console.log(store.get(denormalizedAtom));
+});
+
+// change the team's name
+store.set(cyclingTeamsAtom, ([teamSky, ...teams]) => [
+  store.set(teamSky, prev => ({ ...prev, name: "Ineos" })),
+  ...teams,
+]);
+
+// move Froome to another team
+store.set(froomeAtom, prev => ({
+  ...prev,
+  team: store.get(cyclingTeamsAtom)[1],
+}));
+```
+
+</LibSnippet>
+
+This is one way to do it and there might other alternatives as atom derivation is very permissive.
+For example we could have made `denormalizedAtom` writeable, with its setter manually updating the other atoms, or only the `froomeAtom`.
+It would be possible because the setter doesn't even require the `newValue` to be of the same type as the atom, the function can accept value of any other type and read and update any other atoms with this `newValue`.
+
+And this is where we touch on the fundamental difference between these two libraries:
+**Jotai has a permissive primitive and a low-level imperative API, while Optics has a more principled primitive and a higher-level declarative API built around it.**
+
+An atom in Jotai is flexible, the get function can read from every atom it wants, as can the set function which can in turn update any atom it pleases (including itself).
+While certainly powerful, this permissiveness means **compositional patterns cannot easily emerge** and the API has to stay low-level.  
+You can't decompose atoms or compose them together other than with using the `atom` function and doing the wiring by hand.
+Atoms reading and updating each others imperatively complicates your ability to make sense of the underlying data-flow, you have to mentally parse it by tracking every read and write happening in every atom derivation.
+
+On the other end an optic is more a principled primitive: it is a **functional reference** on a piece of state.  
+When deriving an optic [simple laws](<https://www.optics.page/docs/API/methods/derive()/#lawful-optics>) must be followed for the resulting optic to make sense,
+and consequently you can't accept a different type than that of the optic in the set function, unlike with atoms.
+
+But from this constraint comes power, as we now have a primitive that's **transparent**, meaning you can understand what it does just by looking at its type.
+An optic lets you manipulate a value without having to care about where it comes from or what are the implications of updating it for other parts of the state.  
+And most importantly, it gives us a base building block that **composes predictably**.
+That's what allows Optics to have a **high-level** and type-safe API, which lets you derive a new optic just by calling a property or a method,
+create relations between entities with automatic denormalization, or [map and reduce](https://www.optics.page/docs/Guides/map_reduce) over multiple values.  
+A high-level API means you'll rarely need to derive optics manually.
+
+It turns out this notion of reference is key, every property of optics emerges from it and it makes exploring further implications really exciting.
+(_e.g. Optics could point to more than just client state, for example state coming from the server with caching, invalidation and deduplication handled behing the scenes_).
+
+So in essence the difference between the two concepts can be summarized as flexible/imperative/low-level on one side and disciplined/declarative/high-level on the other.
+
+There's no right or wrong here, but optics will have a tendency to scale better.
+
+---
+
+_The author of this post is also the creator of [Optics](https://optics.page) (the library not the concept).
+You should also keep in mind that Optics is a new library still in beta while Jotai is battle-tested, with a strong community and ecosystem around it._
