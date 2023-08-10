@@ -34,7 +34,9 @@ Both libraries can be called **atomic** in the sense that you can create as many
 
 <LibSnippet lib="jotai">
 
-```ts
+```ts twoslash
+import { atom } from "jotai";
+
 const nameAtom = atom("aramis");
 ```
 
@@ -44,7 +46,9 @@ const nameAtom = atom("aramis");
 
 <LibSnippet lib="optics">
 
-```ts
+```ts twoslash
+import { createState } from "@optics/react";
+
 const onName = createState("aramis");
 ```
 
@@ -57,7 +61,12 @@ They both allow you to read the state, update it, subscribe to it and use it in 
 
 <LibSnippet lib="jotai">
 
-```ts
+```ts twoslash
+import { atom, useAtom, createStore } from "jotai";
+const nameAtom = atom("aramis");
+
+// ---cut---
+
 const store = createStore();
 
 // Read
@@ -83,7 +92,11 @@ const Component = () => {
 
 <LibSnippet lib="optics">
 
-```ts
+```ts twoslash
+import { createState, useOptic } from "@optics/react";
+const onName = createState("aramis");
+// ---cut---
+
 // Read
 onName.get(); // "aramis"
 
@@ -107,10 +120,15 @@ But if you're already familiar with Jotai you know that its power lies in its ab
 
 <LibSnippet lib="jotai">
 
-```ts
+```ts twoslash
+import { atom, createStore } from "jotai";
+const nameAtom = atom("aramis");
+const store = createStore();
+// ---cut---
+
 const upperCaseNameAtom = atom(
   get => get(nameAtom).toUpperCase(),
-  (get, set, newName) => {
+  (get, set, newName: string) => {
     set(nameAtom, newName.toLowerCase());
   }
 );
@@ -128,7 +146,11 @@ Well it turns out you can also derive optics in a similar fashion:
 
 <LibSnippet lib="optics">
 
-```ts
+```ts twoslash
+import { createState } from "@optics/react";
+const onName = createState("aramis");
+// ---cut---
+
 const onUpperCaseName = onName.derive(
   name => name.toUpperCase(),
   newName => newName.toLowerCase()
@@ -159,7 +181,10 @@ One of the main selling point of optics is the ability to derive a new optic fro
 
 <LibSnippet lib="optics">
 
-```ts
+```ts twoslash
+import { createState } from "@optics/react";
+// ---cut---
+
 const onUser = createState({
   name: "Vincent",
   contact: { phone: "(555) 555-1234" },
@@ -176,10 +201,19 @@ It looks like a plain reference in JavaScript, and just like them they are **cha
 
 <LibSnippet lib="optics">
 
-```ts
+```ts twoslash
+import { createState } from "@optics/react";
+const onUser = createState({
+  name: "Vincent",
+  contact: { phone: "(555) 555-1234" },
+});
+// ---cut---
+
 const onPhone = onUser.contact.phone;
 
 onPhone.get(); // "(555) 555-1234"
+
+onPhone.set("(999) 444-4321");
 ```
 
 </LibSnippet>
@@ -190,7 +224,10 @@ Now doing the same with Jotai isn't that straight-forward, besides its `atom` fu
 
 <LibSnippet lib="jotai">
 
-```ts
+```ts twoslash
+import { atom } from "jotai";
+// ---cut---
+
 const userAtom = atom({
   name: "Vincent",
   contact: { phone: "(555) 555-1234" },
@@ -198,22 +235,25 @@ const userAtom = atom({
 
 const nameAtom = atom(
   get => get(userAtom).name,
-  (get, set, newName) => set({ ...get(nameAtom), name: newName })
+  (get, set, newName: string) =>
+    set(userAtom, { ...get(userAtom), name: newName })
 );
 ```
 
 </LibSnippet>
 
-To get to the phone property it's the same logic but with an additional level of nesting when updating the atom.  
+To get an atom for the phone it's the same logic but with an additional level of nesting when updating the atom.  
 When dealing with deeply nested values in Jotai you'll want to use an additional library like [Immer](https://immerjs.github.io/immer/) to avoid the update logic getting out of hand.
 
 ### Methods
 
-With optics, in addition to properties you can use various methods to derive new optics like `findFirst`, `refine` or `max`:
+With optics, in addition to properties you can use various methods to derive new optics, like `findFirst`, `refine` or `max`:
 
 <LibSnippet lib="optics">
 
-```ts
+```ts twoslash
+import { createState } from "@optics/react";
+// ---cut---
 const onCyclists = createState([
   { name: "Froome", tourDeFrance: 4 },
   { name: "Vingegaard", tourDeFrance: 2 },
@@ -227,11 +267,17 @@ onMostTitled.name.get(); // "Hindurain"
 
 </LibSnippet>
 
+`onMostTitled` is an optic focused on the cyclist with the most Tour de France wins.
+If a cyclist surpasses Hindurain, then the optic will automatically focus the new record holder !
+
 With Jotai you're left again implementing these kind of behaviors with the low-level `atom` function:
 
 <LibSnippet lib="jotai">
 
-```ts
+```ts twoslash
+import { atom } from "jotai";
+// ---cut---
+
 const cyclistsAtom = atom([
   { name: "Froome", tourDeFrance: 4 },
   { name: "Vingegaard", tourDeFrance: 2 },
@@ -243,7 +289,7 @@ const mostTitledAtom = atom(
     get(cyclistsAtom).reduce((acc, cv) =>
       cv.tourDeFrance > acc.tourDeFrance ? cv : acc
     ),
-  (get, set, newValue) => {
+  (get, set, newValue: { name: string; tourDeFrance: number }) => {
     const indexOfMax = get(cyclistsAtom).reduce(
       (acc, cyclist, index, cyclists) =>
         cyclist.tourDeFrance > cyclists[index].tourDeFrance ? index : acc,
@@ -281,7 +327,9 @@ With the Optics library you can [create relations](https://www.optics.page/docs/
 
 <LibSnippet lib="optics">
 
-```ts
+```ts twoslash
+import { createState } from "@optics/react";
+// ---cut---
 const onCyclingTeams = createState([
   { name: "Sky", founded: 2009, bikes: "Pinarello" },
   { name: "Israel Premier Tech", founded: 2015, bikes: "Factor" },
@@ -322,40 +370,56 @@ Doing the same with Jotai is a bit more involved, you can use the [atoms in atom
 
 <LibSnippet lib="jotai">
 
-```ts
+```ts twoslash
+import { atom, createStore, Atom, WritableAtom, PrimitiveAtom } from "jotai";
+const store = createStore();
+
+type Team = {
+  name: string;
+  founded: number;
+  bikes: string;
+};
+type Cyclist = {
+  name: string;
+  age: number;
+  team: PrimitiveAtom<Team>;
+};
+// ---cut---
+
 const cyclingTeamsAtom = atom([
   atom({ name: "Sky", founded: 2009, bikes: "Pinarello" }),
   atom({ name: "Israel Premier Tech", founded: 2015, bikes: "Factor" }),
 ]);
 
-const froomeAtom = atom({
-  name: "Froome",
-  age: 38,
-  team: store.get(cyclingTeamsAtom)[0],
-});
+const froomeAtom: WritableAtom<Cyclist, [Cyclist], void> = atom(
+  get => ({
+    name: "Froome",
+    age: 38,
+    team: get(cyclingTeamsAtom)[0],
+  }),
+  (_get, set, newValue) => set(froomeAtom, newValue)
+);
 
 const denormalizedAtom = atom(get => ({
   ...get(froomeAtom),
   team: get(get(froomeAtom).team),
 }));
 
-const store = createStore();
-
 store.sub(denormalizedAtom, () => {
   console.log(store.get(denormalizedAtom));
 });
 
 // change the team's name
-store.set(cyclingTeamsAtom, ([teamSky, ...teams]) => [
-  store.set(teamSky, prev => ({ ...prev, name: "Ineos" })),
-  ...teams,
-]);
+store.set(cyclingTeamsAtom, teams => {
+  store.set(teams[0], prev => ({ ...prev, name: "Ineos" }));
+  return [...teams];
+});
 
 // move Froome to another team
-store.set(froomeAtom, prev => ({
-  ...prev,
+store.set(froomeAtom, {
+  ...store.get(froomeAtom),
   team: store.get(cyclingTeamsAtom)[1],
-}));
+});
 ```
 
 </LibSnippet>
