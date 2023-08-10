@@ -143,7 +143,7 @@ onName.get(); // "porthos"
 
 </LibSnippet>
 
-At its core an optic is just a pair of function (a get and a set) that composes. A ReadWriteAtom in Jotai seems pretty close to that description.
+At its core an optic is just a pair of functions (a get and a set) that composes. A ReadWriteAtom in Jotai seems pretty close to that description.
 
 The authors of [Recoil](https://recoiljs.org/) (the library that inspired Jotai) probably hadn't optics in mind when conceptualizing the atom which makes these similarities all the more interesting.
 
@@ -362,7 +362,7 @@ store.set(froomeAtom, prev => ({
 
 This is one way to do it and there might other alternatives as atom derivation is very permissive.
 For example we could have made `denormalizedAtom` writeable, with its setter manually updating the other atoms, or only the `froomeAtom`.
-It would be possible because the setter doesn't even require the `newValue` to be of the same type as the atom, the function can accept value of any other type and read and update any other atoms with this `newValue`.
+It would be possible because the setter doesn't even require the `newValue` to be of the same type as the atom, the function can accept values of any other type and read and update any other atoms with this `newValue`.
 
 And this is where we touch on the fundamental difference between these two libraries:
 **Jotai has a permissive primitive and a low-level imperative API, while Optics has a more principled primitive and a higher-level declarative API built around it.**
@@ -370,11 +370,11 @@ And this is where we touch on the fundamental difference between these two libra
 An atom in Jotai is flexible, the get function can read from every atom it wants, as can the set function which can in turn update any atom it pleases (including itself).
 While certainly powerful, this permissiveness means **compositional patterns cannot easily emerge** and the API has to stay low-level.  
 You can't decompose atoms or compose them together other than with using the `atom` function and doing the wiring by hand.
-Atoms reading and updating each others imperatively complicates your ability to make sense of the underlying data-flow, you have to mentally parse it by tracking every read and write happening in every atom derivation.
+Atoms reading and updating each other imperatively complicates your ability to make sense of the underlying data-flow, you have to mentally parse it by tracking every read and write happening in every atom derivation.
 
-On the other end an optic is more a principled primitive: it is a **functional reference** on a piece of state.  
+On the other end an optic is a more principled primitive: it is a **functional reference** on a piece of state.  
 When deriving an optic [simple laws](<https://www.optics.page/docs/API/methods/derive()/#lawful-optics>) must be followed for the resulting optic to make sense,
-and consequently you can't accept a different type than that of the optic in the set function, unlike with atoms.
+for example the set function can't take in a number if the get function returns a string, it must be of the same type.
 
 But from this constraint comes power, as we now have a primitive that's **transparent**, meaning you can understand what it does just by looking at its type.
 An optic lets you manipulate a value without having to care about where it comes from or what are the implications of updating it for other parts of the state.  
