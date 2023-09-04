@@ -49,7 +49,7 @@ const nameAtom = atom("aramis");
 ```ts twoslash
 import { createState } from "@optics/react";
 
-const onName = createState("aramis");
+const nameOptic = createState("aramis");
 ```
 
 </LibSnippet>
@@ -94,23 +94,23 @@ const Component = () => {
 
 ```ts twoslash
 import { createState, useOptic } from "@optics/react";
-const onName = createState("aramis");
+const nameOptic = createState("aramis");
 // ---cut---
 
 // Read
-onName.get(); // "aramis"
+nameOptic.get(); // "aramis"
 
 // Update
-onName.set("athos");
+nameOptic.set("athos");
 
 // Subscribe
-const unsub = onName.subscribe(newName => {
+const unsub = nameOptic.subscribe(newName => {
   console.log(`name changed to ${newName}`);
 });
 
 // Usage in components
 const Component = () => {
-  const [name, setName] = useOptic(onName);
+  const [name, setName] = useOptic(nameOptic);
 };
 ```
 
@@ -148,19 +148,19 @@ Well it turns out you can also derive optics in a similar fashion:
 
 ```ts twoslash
 import { createState } from "@optics/react";
-const onName = createState("aramis");
+const nameOptic = createState("aramis");
 // ---cut---
 
-const onUpperCaseName = onName.derive(
+const upperCaseNameOptic = nameOptic.derive(
   name => name.toUpperCase(),
   newName => newName.toLowerCase()
 );
 
-onUpperCaseName.get(); // "ATHOS"
+upperCaseNameOptic.get(); // "ATHOS"
 
-onUpperCaseName.set("PORTHOS");
+upperCaseNameOptic.set("PORTHOS");
 
-onName.get(); // "porthos"
+nameOptic.get(); // "porthos"
 ```
 
 </LibSnippet>
@@ -185,35 +185,35 @@ One of the main selling point of optics is the ability to derive a new optic fro
 import { createState } from "@optics/react";
 // ---cut---
 
-const onUser = createState({
+const userOptic = createState({
   name: "Vincent",
   contact: { phone: "(555) 555-1234" },
 });
 
-const onName = onUser.name;
-onName.get(); // "Vincent"
+const nameOptic = userOptic.name;
+nameOptic.get(); // "Vincent"
 ```
 
 </LibSnippet>
 
-The `onName` optic is focused on the `name` property, and allows us to read, modify it or subscribe to its changes.  
+The `nameOptic` optic is focused on the `name` property, and allows us to read, modify it or subscribe to its changes.  
 It looks like a plain reference in JavaScript, and just like them they are **chainable**:
 
 <LibSnippet lib="optics">
 
 ```ts twoslash
 import { createState } from "@optics/react";
-const onUser = createState({
+const userOptic = createState({
   name: "Vincent",
   contact: { phone: "(555) 555-1234" },
 });
 // ---cut---
 
-const onPhone = onUser.contact.phone;
+const phoneOptic = userOptic.contact.phone;
 
-onPhone.get(); // "(555) 555-1234"
+phoneOptic.get(); // "(555) 555-1234"
 
-onPhone.set("(999) 444-4321");
+phoneOptic.set("(999) 444-4321");
 ```
 
 </LibSnippet>
@@ -254,20 +254,20 @@ With optics, in addition to properties you can use various methods to derive new
 ```ts twoslash
 import { createState } from "@optics/react";
 // ---cut---
-const onCyclists = createState([
+const cyclistsOptic = createState([
   { name: "Froome", tourDeFrance: 4 },
   { name: "Vingegaard", tourDeFrance: 2 },
   { name: "Hindurain", tourDeFrance: 5 },
 ]);
 
-const onMostTitled = onCyclists.max(cyclist => cyclist.tourDeFrance);
+const mostTitledOptic = cyclistsOptic.max(cyclist => cyclist.tourDeFrance);
 
-onMostTitled.name.get(); // "Hindurain"
+mostTitledOptic.name.get(); // "Hindurain"
 ```
 
 </LibSnippet>
 
-`onMostTitled` is an optic focused on the cyclist with the most Tour de France wins.
+`mostTitledOptic` is an optic focused on the cyclist with the most Tour de France wins.
 If a cyclist surpasses Hindurain, then the optic will automatically focus the new record holder !
 
 With Jotai you're left again implementing these kind of behaviors with the low-level `atom` function:
@@ -330,21 +330,21 @@ With the Optics library you can [create relations](https://www.optics.page/docs/
 ```ts twoslash
 import { createState } from "@optics/react";
 // ---cut---
-const onCyclingTeams = createState([
+const cyclingTeamsOptic = createState([
   { name: "Sky", founded: 2009, bikes: "Pinarello" },
   { name: "Israel Premier Tech", founded: 2015, bikes: "Factor" },
 ]);
 
-const onFroome = createState({
+const froomeOptic = createState({
   name: "Froome",
   age: 38,
-  team: onCyclingTeams[0],
+  team: cyclingTeamsOptic[0],
 });
 
-onFroome.subscribe(console.log, { denormalize: true });
+froomeOptic.subscribe(console.log, { denormalize: true });
 
 // change the team's name
-onCyclingTeams[0].name.set("Ineos");
+cyclingTeamsOptic[0].name.set("Ineos");
 // console output:
 // {
 //   name: "Froome",
@@ -353,7 +353,7 @@ onCyclingTeams[0].name.set("Ineos");
 // }
 
 // move Froome to another team
-onFroome.team.set(onCyclingTeams[1]);
+froomeOptic.team.set(cyclingTeamsOptic[1]);
 // console output:
 // {
 //   name: "Froome",
