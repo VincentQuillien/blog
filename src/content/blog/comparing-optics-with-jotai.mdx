@@ -151,10 +151,10 @@ import { createState } from "@optics/react";
 const nameOptic = createState("aramis");
 // ---cut---
 
-const upperCaseNameOptic = nameOptic.derive(
-  name => name.toUpperCase(),
-  newName => newName.toLowerCase()
-);
+const upperCaseNameOptic = nameOptic.derive({
+  get: name => name.toUpperCase(),
+  set: newName => newName.toLowerCase(),
+});
 
 upperCaseNameOptic.get(); // "ATHOS"
 
@@ -245,22 +245,27 @@ const nameAtom = atom(
 To get an atom for the phone it's the same logic but with an additional level of nesting when updating the atom.  
 When dealing with deeply nested values in Jotai you'll want to use an additional library like [Immer](https://immerjs.github.io/immer/) to avoid the update logic getting out of hand.
 
-### Methods
+### Combinators
 
-With optics, in addition to properties you can use various methods to derive new optics, like `findFirst`, `refine` or `max`:
+With optics, in addition to properties you can use various functions, called "combinators", that simply return a get and a set function.  
+You can call them directly in the derive method:
 
 <LibSnippet lib="optics">
 
 ```ts twoslash
 import { createState } from "@optics/react";
 // ---cut---
+import { max } from "@optics/react/combinators";
+
 const cyclistsOptic = createState([
   { name: "Froome", tourDeFrance: 4 },
   { name: "Vingegaard", tourDeFrance: 2 },
   { name: "Hindurain", tourDeFrance: 5 },
 ]);
 
-const mostTitledOptic = cyclistsOptic.max(cyclist => cyclist.tourDeFrance);
+const mostTitledOptic = cyclistsOptic.derive(
+  max(cyclist => cyclist.tourDeFrance)
+);
 
 mostTitledOptic.name.get(); // "Hindurain"
 ```
@@ -269,6 +274,10 @@ mostTitledOptic.name.get(); // "Hindurain"
 
 `mostTitledOptic` is an optic focused on the cyclist with the most Tour de France wins.
 If a cyclist surpasses Hindurain, then the optic will automatically focus the new record holder !
+
+Some basic combinators are provided like `find`, `refine` or `cond` but you can easily build your own.
+
+<br />
 
 With Jotai you're left again implementing these kind of behaviors with the low-level `atom` function:
 
@@ -305,16 +314,19 @@ const mostTitledAtom = atom(
 
 </LibSnippet>
 
-While it stays straightforward with simple examples, it can get convoluted when multiple atoms are involved, particularly in the set function. You have to mentally parse the functions and find all the imperative connections to and from other atoms to get a grasp of the data-flow.
+While it stays straightforward with simple examples, it can get convoluted when multiple atoms are involved, particularly in the set function.  
+You have to mentally parse the functions and find all the imperative connections to and from other atoms to get a grasp of the data-flow.
 
 And while Jotai allows you to manually implement every possible operation with atoms, what it is missing is a way to natively **chain** these atoms.
 
-Optics allows you to do that with its **fluent-api**, where in a single expression you can derive a new optic from properties, built-in methods or any custom derive logic you want:
+Optics allows you to do that with its **fluent-api**, where in a single expression you can derive a new optic from properties, combinators or any custom derive logic you want:
 
 <LibSnippet lib="optics">
 
 ```ts
-const newOptic = optic.propA.propB.builtInMethod().derive(customDerivation);
+const newOptic = optic.propA.propB
+  .derive(combinator)
+  .derive({ customGet, customSet }).propC;
 ```
 
 </LibSnippet>
